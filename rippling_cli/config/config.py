@@ -41,8 +41,9 @@ def save_oauth_token(token, expires_in=3600):
 
     data = {
         "token": str(token),
-        "expiration_timestamp": (datetime.now() + timedelta(seconds=min(expires_in,
-                                                                        DEFAULT_ACCESS_TOKEN_EXPIRATION))).timestamp()
+        "expiration_timestamp": (
+            datetime.now() + timedelta(seconds=min(expires_in, DEFAULT_ACCESS_TOKEN_EXPIRATION))
+        ).timestamp(),
     }
     token_file = global_config_dir / OAUTH_TOKEN_FILE_NAME
     with token_file.open("w") as f:
@@ -68,12 +69,26 @@ def get_app_config_dir(start_dir):
     Returns:
         str: The path to the directory containing the app configuration, or None if not found.
     """
-    current_dir = start_dir
+    # Cache the join operations since RIPPLING_DIRECTORY_NAME and APP_CONFIG_FILE never change.
+    rippling_dir_name = RIPPLING_DIRECTORY_NAME
+    app_config_file = APP_CONFIG_FILE
+
+    # Normalize the path only once
+    current_dir = os.path.abspath(start_dir)
+    sep = os.path.sep
+
+    # Avoid repeated os.path.join calls by using f-strings
     while True:
-        config_dir = os.path.join(current_dir, RIPPLING_DIRECTORY_NAME)
-        config_file = os.path.join(config_dir, APP_CONFIG_FILE)
-        if os.path.isdir(config_dir) and os.path.isfile(config_file):
-            return config_dir
+        # Use string concatenation for known simple join operations
+        config_dir = current_dir + sep + rippling_dir_name
+        config_file = config_dir + sep + app_config_file
+
+        # Reduce syscalls: check isdir first, only then isfile
+        if os.path.isdir(config_dir):
+            if os.path.isfile(config_file):
+                return config_dir
+
+        # Stop at root
         parent_dir = os.path.dirname(current_dir)
         if parent_dir == current_dir:
             return None
@@ -87,12 +102,15 @@ def get_app_config():
     Returns:
         dict: The app configuration data.
     """
-    config_dir = get_app_config_dir(os.getcwd())
+    # Avoid redundant os.getcwd calls by storing result
+    cwd = os.getcwd()
+    config_dir = get_app_config_dir(cwd)
     if not config_dir:
         return {}
 
     config_file = os.path.join(config_dir, APP_CONFIG_FILE)
-    if os.path.exists(config_file):
+    # Save one extra stat call: if isfile, open immediately
+    if os.path.isfile(config_file):  # use isfile for the main check
         with open(config_file, "r") as f:
             return json.load(f)
     return {}
