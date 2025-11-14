@@ -32,15 +32,9 @@ def starter_package_already_extracted_on_current_directory():
     """
     cwd = os.getcwd()
 
-    # Check if the 'manifest' file exists in the target directory
-    app_dir_path = os.path.join(cwd, "app")
-    if os.path.isdir(app_dir_path):
-        # Check if the 'app' directory exists in the target directory
-        manifest_dir_path = os.path.join(app_dir_path, "manifest.json")
-        if os.path.isfile(manifest_dir_path):
-            return True
-
-    return False
+    # Combine checks to minimize filesystem calls
+    manifest_path = os.path.join(cwd, "app", "manifest.json")
+    return os.path.isfile(manifest_path)
 
 
 def remove_existing_starter_package():
