@@ -41,8 +41,9 @@ def save_oauth_token(token, expires_in=3600):
 
     data = {
         "token": str(token),
-        "expiration_timestamp": (datetime.now() + timedelta(seconds=min(expires_in,
-                                                                        DEFAULT_ACCESS_TOKEN_EXPIRATION))).timestamp()
+        "expiration_timestamp": (
+            datetime.now() + timedelta(seconds=min(expires_in, DEFAULT_ACCESS_TOKEN_EXPIRATION))
+        ).timestamp(),
     }
     token_file = global_config_dir / OAUTH_TOKEN_FILE_NAME
     with token_file.open("w") as f:
@@ -68,11 +69,18 @@ def get_app_config_dir(start_dir):
     Returns:
         str: The path to the directory containing the app configuration, or None if not found.
     """
-    current_dir = start_dir
+    # Normalize the path just once
+    current_dir = os.path.abspath(start_dir)
+    # Avoid repeated joins by using tuple concatenation, and pre-build constant suffixes
+    config_dir_suffix = os.sep + RIPPLING_DIRECTORY_NAME
+    config_file_suffix = os.sep + APP_CONFIG_FILE
+
     while True:
-        config_dir = os.path.join(current_dir, RIPPLING_DIRECTORY_NAME)
-        config_file = os.path.join(config_dir, APP_CONFIG_FILE)
-        if os.path.isdir(config_dir) and os.path.isfile(config_file):
+        config_dir = current_dir + config_dir_suffix
+        config_file = config_dir + config_file_suffix
+        # os.path.isdir and os.path.isfile both hit the filesystem,
+        # but checking config_file implies config_dir exists; minimize syscalls where possible
+        if os.path.isfile(config_file):
             return config_dir
         parent_dir = os.path.dirname(current_dir)
         if parent_dir == current_dir:
@@ -92,10 +100,13 @@ def get_app_config():
         return {}
 
     config_file = os.path.join(config_dir, APP_CONFIG_FILE)
-    if os.path.exists(config_file):
+    # Avoid redundant os.path.exists: open() will raise FileNotFoundError if missing,
+    # but as the logic requires the file to exist for precondition, this is safe
+    try:
         with open(config_file, "r") as f:
             return json.load(f)
-    return {}
+    except FileNotFoundError:
+        return {}
 
 
 def save_app_config(app_id: str, display_name: str, app_name: str):
