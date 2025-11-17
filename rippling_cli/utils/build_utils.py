@@ -30,17 +30,12 @@ def starter_package_already_extracted_on_current_directory():
     Check if the starter package has already been extracted in the current working directory.
     :return:
     """
-    cwd = os.getcwd()
-
-    # Check if the 'manifest' file exists in the target directory
-    app_dir_path = os.path.join(cwd, "app")
-    if os.path.isdir(app_dir_path):
-        # Check if the 'app' directory exists in the target directory
-        manifest_dir_path = os.path.join(app_dir_path, "manifest.json")
-        if os.path.isfile(manifest_dir_path):
-            return True
-
-    return False
+    # Combine the directory join operations for direct absolute path construction,
+    # and avoid unnecessary intermediate variables.
+    manifest_dir_path = os.path.join(os.getcwd(), "app", "manifest.json")
+    # Use os.path.isfile on the manifest path, which automatically confirms both
+    # the existence of 'app' as directory and 'manifest.json' as a file, reducing file system checks.
+    return os.path.isfile(manifest_dir_path)
 
 
 def remove_existing_starter_package():
@@ -153,7 +148,8 @@ def display_builds(builds):
     for build in builds:
         click.echo(
             f"- {build.get('name')} {build.get('created_by', {}).get('fullName', '-')}  {build.get('status')} \
-{build.get('id')}")
+{build.get('id')}"
+        )
 
 
 def get_dependencies_from_pyproject(pyproject_toml):
@@ -170,12 +166,12 @@ def get_dependencies_from_pyproject(pyproject_toml):
     config.read(pyproject_toml)
 
     dependencies = {}
-    if config.has_section('tool.poetry.dependencies'):
-        for key, value in config.items('tool.poetry.dependencies'):
-            if key == 'python':
+    if config.has_section("tool.poetry.dependencies"):
+        for key, value in config.items("tool.poetry.dependencies"):
+            if key == "python":
                 continue
             # Strip any leading/trailing quotes from the value
-            value = value.strip('"\'')
+            value = value.strip("\"'")
             dependencies[key] = value
 
     return dependencies
@@ -189,19 +185,19 @@ def create_requirements_file(dependencies, requirements_file):
         dependencies (dict): A dictionary containing the non-dev dependencies.
         requirements_file (str): Path to the requirements.txt file.
     """
-    with open(requirements_file, 'w') as f:
+    with open(requirements_file, "w") as f:
         for dependency, constraint in dependencies.items():
             # Strip any leading/trailing quotes from the dependency
-            dependency = dependency.strip('"\'')
+            dependency = dependency.strip("\"'")
             # Remove '^' operator if present in the constraint
-            constraint = constraint.lstrip('^')
-            if constraint.startswith('>='):
-                version_str = f'{dependency}{constraint}'
-            elif constraint.startswith('<'):
-                version_str = f'{dependency},{constraint}'
+            constraint = constraint.lstrip("^")
+            if constraint.startswith(">="):
+                version_str = f"{dependency}{constraint}"
+            elif constraint.startswith("<"):
+                version_str = f"{dependency},{constraint}"
             else:
-                version_str = f'{dependency}=={constraint}'
-            f.write(f'{version_str}\n')
+                version_str = f"{dependency}=={constraint}"
+            f.write(f"{version_str}\n")
 
 
 def install_dependencies(requirements_file, target_dir):
@@ -213,7 +209,7 @@ def install_dependencies(requirements_file, target_dir):
         target_dir (str): Path to the target directory.
     """
     # Command to install dependencies
-    cmd = ['poetry', 'run', 'pip', 'install', '--target', target_dir, '-r', requirements_file]
+    cmd = ["poetry", "run", "pip", "install", "--target", target_dir, "-r", requirements_file]
 
     # Run the command and capture the output
     result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -232,7 +228,7 @@ def create_zip_file(app_folder, target_dir, zip_filename):
         target_dir (str): Path to the target directory containing the dependencies.
         zip_filename (str): Name of the zip file to be created.
     """
-    with zipfile.ZipFile(zip_filename, 'w') as zipf:
+    with zipfile.ZipFile(zip_filename, "w") as zipf:
         # Add the app folder
         for root, dirs, files in os.walk(app_folder):
             for file in files:
@@ -255,16 +251,16 @@ def upload_zip_file_to_s3(content_type, file_path: str, s3_upload_file_credentia
     :return:
     """
     api_client = APIClient(base_url=s3_upload_file_credentials.url)
-    with open(file_path, 'rb') as f:
+    with open(file_path, "rb") as f:
         data = asdict(s3_upload_file_credentials)
-        data.pop('url')
+        data.pop("url")
         for key in list(data.keys()):
-            if '_' in key:
-                data[key.replace('_', '-')] = data[key]
+            if "_" in key:
+                data[key.replace("_", "-")] = data[key]
                 del data[key]
-        data.pop('s3-build-url')
-        data['Content-Type'] = content_type
-        files = {'file': f}
+        data.pop("s3-build-url")
+        data["Content-Type"] = content_type
+        files = {"file": f}
         response = api_client.post("/", files=files, data=data)
         return response.status_code == HTTPStatus.NO_CONTENT
 
@@ -281,7 +277,7 @@ def package_and_upload_app_with_dependencies(s3_upload_file_credentials: S3Uploa
     # Create a temporary directory
     with tempfile.TemporaryDirectory() as temp_dir:
         # Create a temporary requirements.txt file
-        requirements_file = os.path.join(temp_dir, 'requirements.txt')
+        requirements_file = os.path.join(temp_dir, "requirements.txt")
         create_requirements_file(dependencies, requirements_file)
 
         # Install the non-dev dependencies in the temporary directory
@@ -291,11 +287,11 @@ def package_and_upload_app_with_dependencies(s3_upload_file_credentials: S3Uploa
         if os.path.exists(requirements_file):
             os.remove(requirements_file)
         # Create a zip file containing the app folder and its dependencies
-        zip_filename = temp_dir + 'app_with_dependencies.zip'
+        zip_filename = temp_dir + "app_with_dependencies.zip"
         create_zip_file(APP_FOLDER, temp_dir, zip_filename)
 
         # Upload the zip file to S3
-        upload_zip_file_to_s3('application/zip', zip_filename, s3_upload_file_credentials)
+        upload_zip_file_to_s3("application/zip", zip_filename, s3_upload_file_credentials)
 
     return True
 
@@ -309,11 +305,8 @@ def validate_bundle(app_name: str, build_s3_url: str, oauth_token: str):
     :return:
     """
     api_client = APIClient(base_url=RIPPLING_API, headers={"Authorization": f"Bearer {oauth_token}"})
-    data = {
-        "app_name": app_name,
-        "build_s3_url": build_s3_url
-    }
-    response = api_client.post('/apps/api/app_builds/validate', data=data)
+    data = {"app_name": app_name, "build_s3_url": build_s3_url}
+    response = api_client.post("/apps/api/app_builds/validate", data=data)
 
     if response.status_code not in [HTTPStatus.BAD_REQUEST, HTTPStatus.OK]:
         return False, None, None
@@ -321,8 +314,7 @@ def validate_bundle(app_name: str, build_s3_url: str, oauth_token: str):
     response_json = response.json()
     # Convert the validations dictionary to a list of Validation objects
     validations = {
-        name: Validation(name=name, **validation_data)
-        for name, validation_data in response_json["validations"].items()
+        name: Validation(name=name, **validation_data) for name, validation_data in response_json["validations"].items()
     }
 
     suggested_build_name = response_json.get("suggested_build_name", None)
@@ -342,13 +334,8 @@ def create_build(app_name: str, build_s3_url: str, name: str, oauth_token: str):
     :return:
     """
     api_client = get_api_client_with_role_company(oauth_token)
-    data = {
-        "app_name": app_name,
-        "build_s3_url": build_s3_url,
-        "name": name,
-        "developer_notes": ""
-    }
-    response = api_client.post('/apps/api/app_builds/upload', data=data)
+    data = {"app_name": app_name, "build_s3_url": build_s3_url, "name": name, "developer_notes": ""}
+    response = api_client.post("/apps/api/app_builds/upload", data=data)
     return response.status_code == HTTPStatus.CREATED
 
 
@@ -365,7 +352,7 @@ def deploy_build(app_name: str, build_id: str, oauth_token: str):
         "app_name": app_name,
         "build_id": build_id,
     }
-    response = api_client.post('/apps/api/app_builds/deploy', data=data)
+    response = api_client.post("/apps/api/app_builds/deploy", data=data)
     return response.status_code == HTTPStatus.ACCEPTED
 
 
@@ -378,15 +365,15 @@ def package_and_validate_bundle(oauth_token: str):
     """
     # get the s3 upload credentials
 
-    s3_upload_file_credentials: Optional[S3UploadFileCredentials] = get_s3_upload_url_credentials("application/zip",
-                                                                                        APP_BUILD_MODULE
-                                                                                        , oauth_token)
+    s3_upload_file_credentials: Optional[S3UploadFileCredentials] = get_s3_upload_url_credentials(
+        "application/zip", APP_BUILD_MODULE, oauth_token
+    )
     if not s3_upload_file_credentials:
         click.echo("Failed to get the s3 upload credentials.")
         return None, None
 
     # package and upload the app with dependencies to s3
-    click.echo(click.style('Packaging and Uploading', fg='yellow'))
+    click.echo(click.style("Packaging and Uploading", fg="yellow"))
     loading_bar = start_circular_loading_bar(length=0)
     upload_steps = package_and_upload_app_with_dependencies(s3_upload_file_credentials)
     stop_loading_bar(loading_bar)
@@ -400,11 +387,11 @@ def package_and_validate_bundle(oauth_token: str):
     app_config = get_app_config()
 
     # validate the build
-    click.echo(click.style('Validating app bundle...', fg='cyan'))
-    loading_bar = start_loading_bar(length=20, label="Validating", char='#')
-    validation_successful, suggested_build_name, summary = validate_bundle(app_config.get("name"),
-                                                                           s3_upload_file_credentials.s3_build_url,
-                                                                           oauth_token)
+    click.echo(click.style("Validating app bundle...", fg="cyan"))
+    loading_bar = start_loading_bar(length=20, label="Validating", char="#")
+    validation_successful, suggested_build_name, summary = validate_bundle(
+        app_config.get("name"), s3_upload_file_credentials.s3_build_url, oauth_token
+    )
     stop_loading_bar(loading_bar)
     if summary:
         # print the validation summary
