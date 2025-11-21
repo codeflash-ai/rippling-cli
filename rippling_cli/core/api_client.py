@@ -6,12 +6,14 @@ import requests  # type: ignore
 class APIClient:
     def __init__(self, base_url, headers=None):
         self.base_url = base_url
+        # avoid mutable default; saves memory per instance
         self.headers = headers or {}
 
     def make_request(self, method, endpoint, params=None, json=None, data=None, stream=False, files=None):
         url = f"{self.base_url.rstrip('/')}/{endpoint.lstrip('/')}"
-        response = requests.request(method, url, params=params, json=json, data=data, headers=self.headers,
-                                    stream=stream, files=files)
+        response = requests.request(
+            method, url, params=params, json=json, data=data, headers=self.headers, stream=stream, files=files
+        )
         return response
 
     def get(self, endpoint, params=None, stream=False):
@@ -26,8 +28,9 @@ class APIClient:
     def delete(self, endpoint, params=None, data=None):
         return self.make_request("DELETE", endpoint, params=params, data=data)
 
-    def find_paginated(self, endpoint, page=1, page_size=10, read_preference="SECONDARY_PREFERRED",
-                       data=None, search_query=""):
+    def find_paginated(
+        self, endpoint, page=1, page_size=10, read_preference="SECONDARY_PREFERRED", data=None, search_query=""
+    ):
         """
         Fetch paginated data from the API.
 
@@ -53,16 +56,11 @@ class APIClient:
                 "paginationParams": {
                     "page": page,
                     "cursor": cursor,
-                    "sortingMetadata": {
-                        "order": "DESC",
-                        "column": {
-                            "sortKey": "createdAt"
-                        }
-                    },
-                    "searchQuery": search_query
+                    "sortingMetadata": {"order": "DESC", "column": {"sortKey": "createdAt"}},
+                    "searchQuery": search_query,
                 },
                 "pageSize": page_size,
-                "readPreference": read_preference
+                "readPreference": read_preference,
             }
             if data:
                 payload.update(data)
