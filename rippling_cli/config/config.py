@@ -41,8 +41,9 @@ def save_oauth_token(token, expires_in=3600):
 
     data = {
         "token": str(token),
-        "expiration_timestamp": (datetime.now() + timedelta(seconds=min(expires_in,
-                                                                        DEFAULT_ACCESS_TOKEN_EXPIRATION))).timestamp()
+        "expiration_timestamp": (
+            datetime.now() + timedelta(seconds=min(expires_in, DEFAULT_ACCESS_TOKEN_EXPIRATION))
+        ).timestamp(),
     }
     token_file = global_config_dir / OAUTH_TOKEN_FILE_NAME
     with token_file.open("w") as f:
@@ -70,7 +71,7 @@ def get_app_config_dir(start_dir):
     """
     current_dir = start_dir
     while True:
-        config_dir = os.path.join(current_dir, RIPPLING_DIRECTORY_NAME)
+        config_dir = current_dir + os.sep + RIPPLING_DIRECTORY_NAME
         config_file = os.path.join(config_dir, APP_CONFIG_FILE)
         if os.path.isdir(config_dir) and os.path.isfile(config_file):
             return config_dir
@@ -91,7 +92,7 @@ def get_app_config():
     if not config_dir:
         return {}
 
-    config_file = os.path.join(config_dir, APP_CONFIG_FILE)
+    config_file = config_dir + os.sep + APP_CONFIG_FILE
     if os.path.exists(config_file):
         with open(config_file, "r") as f:
             return json.load(f)
