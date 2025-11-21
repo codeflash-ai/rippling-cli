@@ -106,11 +106,14 @@ def install_app_for_company(app_name: str, oauth_token: str):
     response = api_client.post(endpoint, data=payload)
 
     if response.status_code in [HTTPStatus.OK, HTTPStatus.BAD_REQUEST]:
-        continue_installation = response.status_code == HTTPStatus.OK \
-                                and response.json().get("message") == f"App {app_name} has installation steps in UI"
+        continue_installation = (
+            response.status_code == HTTPStatus.OK
+            and response.json().get("message") == f"App {app_name} has installation steps in UI"
+        )
         return response.json(), continue_installation
 
     return None, False
+
 
 def get_app_install(oauth_token):
     """
@@ -119,6 +122,6 @@ def get_app_install(oauth_token):
     :return:
     """
     app_config = get_app_config()
-    if not app_config or len(app_config.keys()) == 0:
+    if not app_config:
         return None
     return get_app_install_by_app_id(app_config.get("id"), oauth_token)
