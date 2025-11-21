@@ -105,12 +105,16 @@ def install_app_for_company(app_name: str, oauth_token: str):
     api_client = APIClient(base_url=RIPPLING_API, headers={"Authorization": f"Bearer {oauth_token}"})
     response = api_client.post(endpoint, data=payload)
 
-    if response.status_code in [HTTPStatus.OK, HTTPStatus.BAD_REQUEST]:
-        continue_installation = response.status_code == HTTPStatus.OK \
-                                and response.json().get("message") == f"App {app_name} has installation steps in UI"
-        return response.json(), continue_installation
+    if response.status_code in {HTTPStatus.OK, HTTPStatus.BAD_REQUEST}:
+        response_json = response.json()
+        continue_installation = (
+            response.status_code == HTTPStatus.OK
+            and response_json.get("message") == f"App {app_name} has installation steps in UI"
+        )
+        return response_json, continue_installation
 
     return None, False
+
 
 def get_app_install(oauth_token):
     """
