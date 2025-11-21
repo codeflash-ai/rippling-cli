@@ -1,16 +1,13 @@
 import json
 import os
-
 # Store the OAuth credentials in environment variables or a config file
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from rippling_cli.constants import (
-    APP_CONFIG_FILE,
-    DEFAULT_ACCESS_TOKEN_EXPIRATION,
-    OAUTH_TOKEN_FILE_NAME,
-    RIPPLING_DIRECTORY_NAME,
-)
+from rippling_cli.constants import (APP_CONFIG_FILE,
+                                    DEFAULT_ACCESS_TOKEN_EXPIRATION,
+                                    OAUTH_TOKEN_FILE_NAME,
+                                    RIPPLING_DIRECTORY_NAME)
 
 CLIENT_ID = "AgvGDwoBRb0BJAnL2CQ8dNbE6J2fgCFIchEOyr5S"
 global_config_dir = Path.home() / RIPPLING_DIRECTORY_NAME
@@ -27,13 +24,12 @@ def create_base_directory_if_not_exists(config_dir=global_config_dir):
 
 
 def get_oauth_token_data():
-    create_base_directory_if_not_exists()
-
     token_file = global_config_dir / OAUTH_TOKEN_FILE_NAME
-    if token_file.exists():
+    try:
         with token_file.open("r") as f:
             return json.load(f)
-    return None
+    except FileNotFoundError:
+        return None
 
 
 def save_oauth_token(token, expires_in=3600):
@@ -41,8 +37,9 @@ def save_oauth_token(token, expires_in=3600):
 
     data = {
         "token": str(token),
-        "expiration_timestamp": (datetime.now() + timedelta(seconds=min(expires_in,
-                                                                        DEFAULT_ACCESS_TOKEN_EXPIRATION))).timestamp()
+        "expiration_timestamp": (
+            datetime.now() + timedelta(seconds=min(expires_in, DEFAULT_ACCESS_TOKEN_EXPIRATION))
+        ).timestamp(),
     }
     token_file = global_config_dir / OAUTH_TOKEN_FILE_NAME
     with token_file.open("w") as f:

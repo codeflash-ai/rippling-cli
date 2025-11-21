@@ -15,7 +15,7 @@ from rippling_cli.constants import RIPPLING_API, RIPPLING_BASE_URL
 class OAuthToken:
     class OAuthTokenRequestHandler(http.server.BaseHTTPRequestHandler):
         def __init__(self, *args, **kwargs):
-            self.token = kwargs.pop('token')
+            self.token = kwargs.pop("token")
             super().__init__(*args, **kwargs)
 
         def log_message(self, format, *args):
@@ -33,6 +33,7 @@ class OAuthToken:
 
         def parse_path(self):
             import urllib.parse
+
             return urllib.parse.urlparse(self.path)
 
     def __init__(self, client_id=None, code_challenge=None, code_challenge_method=None):
@@ -50,8 +51,10 @@ class OAuthToken:
         if not self.client_id or not self.code_challenge or not self.code_challenge_method:
             raise ValueError("Missing required parameters")
 
-        url = f"{RIPPLING_BASE_URL}/oauth?clientId={self.client_id}" \
-              f"&codeChallenge={self.code_challenge}&codeChallengeMethod={self.code_challenge_method}"
+        url = (
+            f"{RIPPLING_BASE_URL}/oauth?clientId={self.client_id}"
+            f"&codeChallenge={self.code_challenge}&codeChallengeMethod={self.code_challenge_method}"
+        )
         click.launch(url)
 
         self.server_thread = threading.Thread(target=self.run_server, daemon=True)
@@ -63,9 +66,9 @@ class OAuthToken:
             raise TimeoutError("Authorization code not received within the timeout period.")
 
     def run_server(self):
-        with socketserver.TCPServer(("localhost", 2000),
-                                    lambda *args, **kwargs: self.OAuthTokenRequestHandler(*args, **kwargs,
-                                                                                          token=self)) as httpd:
+        with socketserver.TCPServer(
+            ("localhost", 2000), lambda *args, **kwargs: self.OAuthTokenRequestHandler(*args, **kwargs, token=self)
+        ) as httpd:
             self.httpd = httpd
             self.httpd.serve_forever()
 
@@ -81,7 +84,7 @@ class OAuthToken:
             "client_id": self.client_id,
             "code": self.authorization_code,
             "code_verifier": code_verifier,
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
         }
         response = requests.post(f"{RIPPLING_API}/o/token/", data=data, allow_redirects=False)
         if response.status_code != HTTPStatus.OK:
@@ -95,7 +98,7 @@ class OAuthToken:
         token_data = get_oauth_token_data()
 
         # Extract expiration timestamp from token data
-        expiration_timestamp = token_data and token_data.get('expiration_timestamp')
+        expiration_timestamp = token_data and token_data.get("expiration_timestamp")
 
         if not expiration_timestamp:
             return True
